@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const router = express.Router();
 const bodyParser = require('body-parser');
@@ -20,8 +22,8 @@ const connectDB = () => {
 connectDB();
 
 router.post('/signin', (req, res) => {
-    const { username, password } = req.body;
-    User.findOne({ username }, (err, user) => {
+    const { email, password } = req.body;
+    User.findOne({ email }, (err, user) => {
         if (err) {
             res.status(500).json({ message: { msgBody: "Error has occured", msgError: true } });
         }
@@ -30,7 +32,7 @@ router.post('/signin', (req, res) => {
         } else {
             bcrypt.hash(password, 10, (err, hash) => {
                 const newUser = new User({
-                    username,
+                    email,
                     password: hash
                 });
                 newUser.save()
@@ -42,15 +44,15 @@ router.post('/signin', (req, res) => {
 });
 
 router.post('/login', (req, res) => {
-    const { username, password } = req.body;
-    User.findOne({ username })
+    const { email, password } = req.body;
+    User.findOne({ email })
         .then(user => {
             if (user) {
                 bcrypt.compare(password, user.password)
                     .then(isMatch => {
                         if (isMatch) {
                             const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET);
-                            res.status(200).json({ token, user: { username: user.username } });
+                            res.status(200).json({ token, user: { email: user.email } });
                         } else {
                             res.status(400).json({ message: { msgBody: "Username or password is incorrect", msgError: true } });
                         }
