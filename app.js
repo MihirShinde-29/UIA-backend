@@ -6,7 +6,11 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
+const path = require('path');
+const fs = require('fs');
 const User = require('./userModel');
+const upload = require('./upload');
+const Report = require('./reportModel');
 const app = express();
 const port = 4000;
 dotenv.config();
@@ -63,8 +67,54 @@ router.post('/login', (req, res) => {
             })
 });
 
+router.post('/report', (req, res) => {
+    upload(req, res, async (err) => {
+        console.log(req.file);
+        if (err) {
+            res.status(500).send({
+                success: false,
+                message: err,
+            });
+        } else {
+            let dir = __dirname.split('\\').join('/') + '/uploads/' + req.file.filename
+            // dir = dir.replace(/(\s+)/g, '\\$1');
+            console.log(dir);
+            var final_img = {
+                contentType: req.file.mimetype,
+                data: fs.readFileSync(dir)
+            };
+            req.body.image = final_img
+            req.body.imageURL = req.file.destination + '/' + req.file.filename
+            req.body.date = new Date()
+            const newReport = new Report(req.body);
+            newReport.save()
+                .then(() => res.json('Report added!'))
+                .catch(err => res.status(400).json('Error: ' + err));
+        }
+    })
+})
+
+router.get('/report', (req, res) => {
+    if(req.headers.authorization) {
+        const token = req.headers.authorization.split(' ')[1];
+        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+            if (err) {
+                res.status(500).json({ authenticated: false, message: { msgBody: "Unauthorized", msgError: true } });
+            } else {
+                Report.find()
+                    .select('-image')
+                    .then(reports => res.json(reports))
+                    .catch(err => res.status(400).json('Error: ' + err));
+            }
+        })
+    } else {
+        res.status(500).json({ authenticated: false, message: { msgBody: "Unauthorized", msgError: true } });
+    }
+});
+
 router.get('/', (req, res) => {
     res.json({ message: { msgBody: "Successfully logged in", msgError: false } });
 });
+app.use('/uploads', express.static(path.join(__dirname, "uploads")));
 app.use(router)
 app.listen(port, () => console.log(`Example app listening on port ${port}! - http://localhost:${port}`));
