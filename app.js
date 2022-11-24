@@ -86,6 +86,7 @@ router.post('/report', (req, res) => {
             req.body.image = final_img
             req.body.imageURL = req.file.destination + '/' + req.file.filename
             req.body.date = new Date()
+            req.body.status = 'Pending'
             const newReport = new Report(req.body);
             newReport.save()
                 .then(() => res.json('Report added!'))
@@ -112,6 +113,17 @@ router.post('/area-wise-report', (req, res) => {
 
 router.get('/', (req, res) => {
     res.json({ message: { msgBody: "backend working", msgError: false } });
+});
+
+router.patch('/report/:id', (req, res) => {
+    Report.findById(req.params.id)
+        .then(report => {
+            report.status = req.body.status;
+            report.save()
+                .then(() => res.json('Report updated!'))
+                .catch(err => res.status(400).json('Error: ' + err));
+        })
+        .catch(err => res.status(400).json('Error: ' + err));
 });
 
 app.use('/uploads', express.static(path.join(__dirname, "uploads")));

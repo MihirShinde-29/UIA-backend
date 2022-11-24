@@ -52,7 +52,13 @@ const reportSchema = new mongoose.Schema({
     image: {
         data: Buffer,
         contentType: String,
-    }
+    },
+    status: {
+        type: String,
+        required: true,
+        trim: true,
+        minlength: 3
+    },
 }, {
     timestamps: true,
 });
