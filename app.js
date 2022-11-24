@@ -18,6 +18,7 @@ const URI = process.env.MONGO_URI;
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors())
 app.use(bodyParser.json());
+const area = 2.1
 const connectDB = () => {
     mongoose.connect(URI, { useNewUrlParser: true, useUnifiedTopology: true })
         .then(() => console.log('MongoDB Connected'))
@@ -77,7 +78,6 @@ router.post('/report', (req, res) => {
             });
         } else {
             let dir = __dirname.split('\\').join('/') + '/uploads/' + req.file.filename
-            // dir = dir.replace(/(\s+)/g, '\\$1');
             console.log(dir);
             var final_img = {
                 contentType: req.file.mimetype,
@@ -95,26 +95,25 @@ router.post('/report', (req, res) => {
 })
 
 router.get('/report', (req, res) => {
-    if(req.headers.authorization) {
-        const token = req.headers.authorization.split(' ')[1];
-        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-            if (err) {
-                res.status(500).json({ authenticated: false, message: { msgBody: "Unauthorized", msgError: true } });
-            } else {
-                Report.find()
-                    .select('-image')
-                    .then(reports => res.json(reports))
-                    .catch(err => res.status(400).json('Error: ' + err));
-            }
-        })
-    } else {
-        res.status(500).json({ authenticated: false, message: { msgBody: "Unauthorized", msgError: true } });
-    }
+    Report.find()
+        .select('-image')
+        .then(reports => res.json(reports))
+        .catch(err => res.status(400).json('Error: ' + err));
+});
+
+router.post('/area-wise-report', (req, res) => {
+    const { latitude, longitude } = req.body;
+    const radius = req.body.area || area;
+    Report.find({ latitude: {$gt: parseInt(latitude) - radius, $lt: parseInt(latitude) + radius}, longitude: {$gt: parseInt(longitude) - radius, $lt: parseInt(longitude) + radius }})
+        .select('-image')
+        .then(reports => res.json({result: reports, area: radius, total: reports.length}))
+        .catch(err => res.status(400).json('Error: ' + err));
 });
 
 router.get('/', (req, res) => {
-    res.json({ message: { msgBody: "Successfully logged in", msgError: false } });
+    res.json({ message: { msgBody: "backend working", msgError: false } });
 });
+
 app.use('/uploads', express.static(path.join(__dirname, "uploads")));
 app.use(router)
 app.listen(port, () => console.log(`Example app listening on port ${port}! - http://localhost:${port}`));
